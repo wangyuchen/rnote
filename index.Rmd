@@ -1,13 +1,13 @@
 ---
 title: "Numerical Examples Using R"
 output:
-  pdf_document:
-    latex_engine: xelatex
-    toc: yes
   html_document:
     css: custom_toc.css
     number_sections: yes
     theme: cosmo
+    toc: yes
+  pdf_document:
+    latex_engine: xelatex
     toc: yes
 ---
 
