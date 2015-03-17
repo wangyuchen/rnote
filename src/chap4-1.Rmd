@@ -1,0 +1,151 @@
+---
+output: html_document
+---
+
+```{r, echo=FALSE}
+library(knitr)
+library(ggplot2)
+```
+
+# Nonlinear Regression
+## Nonlinear Regression (Starting Values Available)
+
+---
+
+The velocity of a chemical reaction ($y$) is modeled as a function of the concentration of the chemical
+($x$). There are a total of 18 observations. The desired model is
+
+\[ y_i = \frac{\theta_0 x_i}{\theta_1 + x_i} + \epsilon_i. \]
+
+
+To find reasonable starting values for $\theta_0$ and $\theta_1$, we take the inverse of the model expression (ignoring the error term) and fit the ordinary least-squares regression:
+
+
+\[ \frac{1}{y_i} = \frac{\theta_1 + x_i}{\theta_0 x_i} = \frac{1}{\theta_o} + 
+\frac{\theta_1}{\theta_0} (\frac{1}{x_i}).\]
+
+### Descriptive analysis
+```{r}
+enzyme <- read.table("datasets/enzyme.dat")
+names(enzyme) <- c('y', 'x')
+```
+
+```{r, echo=FALSE}
+require(knitr)
+kable(enzyme, row.names = T)
+```
+
+```{r}
+# plot the data
+require(ggplot2)
+p <- ggplot(data = enzyme, aes(x, y)) + geom_point() + 
+  labs(y = "Reaction Velocity", x = "Concentration")
+p
+```
+
+### Perform an OLS regression to find starting values
+```{r}
+ols_fit <- lsfit(1/enzyme$x, 1/enzyme$y)
+ols_fit$coefficients
+```
+
+So the starting values for $\theta_0$ and $\theta_1$ are given by:
+\[\theta_0^{(0)} = 1 / \beta_0 = \frac{1}{0.03375868} = 29.62 \]
+\[\theta_1^{(0)} = \beta_1 / \beta_0 = \frac{0.45401397}{0.03375868} = 13.45 \]
+
+### Perform a non-linear regression with Gauss-Newton method
+
+#### Fit the model
+The `nls()` function in _stats_ package performs nonlinear (weighted) least-square estimates of the parameter of a nonlinear model. It can use a `formula` object to specify a model and any user-specified function can be used in the model. Because nonlinear models are sometimes complicated, here we showed how to use a customized `nlmodel()` function to specify the model.
+
+To match the SAS output, `trace = T` is set to print out iteration history. Note that the first column corresponding to the objective function and the other columns corresponding to the parameter estimates for each iteration.
+
+```{r}
+nlmodel <- function(x, theta0, theta1) theta0 * x / (theta1 + x)
+nls_fit <- nls(y ~ nlmodel(x, theta0, theta1), data = enzyme, 
+               start = list(theta0 = 29.62, theta1 = 13.45), trace = T)
+nls_fit
+```
+
+#### Parameter estimates
+Parameter estimates and other model summaries can be obtained using the `summary()` function.
+```{r}
+sm <- summary(nls_fit, correlation = T)
+sm$coefficients  # coefficients and their significance
+sm$correlation  # correlation matrix of parameters
+```
+
+To get individual confidence intervals on paramter estimates, we need to know the standard error of the estiamtes as well as the degree of freedom of the estimates of $\sigma^2$. That can be obtained from `df.residual()`.
+
+```{r}
+rdf <- df.residual(nls_fit)
+# C.I. for theta0
+sm$coefficients[1, 1] + qt(c(.025, .975), rdf) * sm$coefficients[1, 2]
+# C.I. for theta1
+sm$coefficients[2, 1] + qt(c(.025, .975), rdf) * sm$coefficients[2, 2]
+```
+
+#### Other Diagnostics
+To compute the leverage, we need $F$ and $(F'F)^{-1}$. The tangent plane hat matrix is $H = F(F'F)^{-1}F'$. The leverage values are the diagonal elements of the hat matrix.
+
+```{r}
+cf <- nls_fit$m$gradient()  # cf: capital f matrix
+sm$cov.unscaled  # (F'F)^(-1)
+ch <- cf %*% sm$cov.unscaled %*% t(cf)
+
+# diagonal of hat matrix
+kable(diag(ch), row.names = T, col.names = c("LEV"))
+```
+
+#### Studentized residual plots
+The studentized residual is computed as 
+
+\[r_i = \frac{e_i}{s \sqrt{1 - \hat{H}_{ii}} } \]
+
+
+```{r}
+rstudent <- residuals(nls_fit) / (sm$sigma * sqrt(1 - diag(ch)))
+enzyme <- data.frame(enzyme, rstudent)
+qplot(y, rstudent, data = enzyme, geom = "point", xlab = "Reaction Velocity")
+qplot(x, rstudent, data = enzyme, geom = "point", xlab = "Concentration")
+```
+
+
+#### Confidence intervals
+The confidence interval is computed by
+\[\hat{Y}_0 \pm t_{(n-p, 1-\alpha/2)} s [f_0'(F'F)^{-1}f_0]^{1/2} .\]
+Note that if we want confidence interval at original $x$ values $x_i$, the definition for $f_0$ here is just the transpose of $F(\theta, x_i)$.
+
+```{r}
+y0 <- fitted(nls_fit)
+se <- apply(t(cf), 2, function(f0) {
+  sm$sigma * {t(f0) %*% sm$cov.unscaled %*% f0}^(.5)
+})
+
+ll <- fitted(nls_fit) + qt(.025, df.residual(nls_fit)) * se
+ul <- fitted(nls_fit) + qt(.975, df.residual(nls_fit)) * se
+ci <- data.frame(enzyme, ll, ul)
+
+
+p + stat_function(fun = nlmodel, args = as.list(coef(nls_fit))) +
+  geom_smooth(aes(ymin = ll, ymax = ul), data = ci, stat="identity")
+
+# prediction intervals are similar
+se <- apply(t(cf), 2, function(f0) {
+  sm$sigma * {1 + t(f0) %*% sm$cov.unscaled %*% f0}^(.5)
+})
+
+ll <- fitted(nls_fit) + qt(.025, df.residual(nls_fit)) * se
+ul <- fitted(nls_fit) + qt(.975, df.residual(nls_fit)) * se
+pi <- data.frame(enzyme, ll, ul)
+
+p + stat_function(fun = nlmodel, args = as.list(coef(nls_fit))) +
+  geom_smooth(aes(ymin = ll, ymax = ul), data = ci, stat="identity") + 
+  geom_smooth(aes(ymin = ll, ymax = ul), data = pi, stat="identity")
+```
+
+
+
+
+
+
