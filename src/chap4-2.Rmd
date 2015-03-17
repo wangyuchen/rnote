@@ -1,0 +1,104 @@
+---
+output: html_document
+---
+
+```{r, echo=FALSE}
+library(knitr)
+library(ggplot2)
+```
+
+## Nonlinear Regression (Grid-Search)
+
+We will model the time evolution of an algal sample taken in the Adriatic Sea (Cavallini, 1993). Time ($x$) is expressed in days and biomass ($y$), which is a measure of growth, is measured in mm2 (what is actually measured is the surface covered by biomass in a microscopic sample). The data seem to follow a logistic curve:
+\[y_i = \frac{\theta_0}{1 + \exp (-\theta_1(x_i - \theta_2))}\]
+
+### Descriptive analysis
+```{r}
+algal <- data.frame(x = c(11, 15, 18, 23, 26, 31, 39, 44, 54, 64, 74), 
+                    y = c(.0048, .0105, .0207, .0619, .3370, 
+                          .7400, 1.7, 2.45, 3.5, 4.5, 5.09))
+kable(algal, row.names = T)
+```
+
+```{r}
+require(ggplot2)
+p <- ggplot(data = algal, aes(x, y)) + geom_point()
+p
+```
+
+
+### Perform a nonlinear regression with the grid-search method
+
+In R, we can perform the grid search and find the starting value manually.
+
+```{r}
+# setup grid
+grid <- expand.grid(theta0 = seq(0, 10, 2), 
+                    theta1 = seq(0, .5, .1), 
+                    theta2 = seq(40, 60, 5))
+kable(head(grid))
+```
+
+We specify the nonlinear model and compute the sum of squares of error manually.
+```{r}
+nlmodel <- function(x, theta) {
+  theta[1] / (1 + exp(-theta[2] * (x - theta[3])))
+}
+
+sse <- apply(grid, 1, function(theta) {
+  sum((algal$y - nlmodel(algal$x, theta))^2)
+})
+kable(head(data.frame(grid, sse)))  # only the head of the table is shown
+```
+
+Final starting values:
+```{r}
+grid[which.min(sse), ]
+```
+
+### Fit the nonlinear model
+```{r}
+nls_fit <- nls(y ~ nlmodel(x, theta), data = algal, trace = T,
+               start = list(theta = c(6, .1, 50)))
+nls_fit
+sm <- summary(nls_fit, correlation = T)
+sm$coefficients
+sm$correlation
+```
+
+
+### Confidence intervals for parameter estimates
+```{r}
+# the output shows theta 1-3, it's actually theta 0-2
+mapply(function(est, se) est + qt(c(.025, .975), df.residual(nls_fit)) * se,
+       sm$coefficients[, 1], sm$coefficients[, 2], SIMPLIFY = F)
+```
+
+### Confidence and prediction interval for $Y$
+```{r}
+y0 <- fitted(nls_fit)
+cf <- cf <- nls_fit$m$gradient() 
+se <- apply(t(cf), 2, function(f0) {
+  sm$sigma * {t(f0) %*% sm$cov.unscaled %*% f0}^(.5)
+})
+
+ll <- fitted(nls_fit) + qt(.025, df.residual(nls_fit)) * se
+ul <- fitted(nls_fit) + qt(.975, df.residual(nls_fit)) * se
+ci <- data.frame(algal, ll, ul)
+
+# prediction intervals are similar
+se <- apply(t(cf), 2, function(f0) {
+  sm$sigma * {1 + t(f0) %*% sm$cov.unscaled %*% f0}^(.5)
+})
+
+ll <- fitted(nls_fit) + qt(.025, df.residual(nls_fit)) * se
+ul <- fitted(nls_fit) + qt(.975, df.residual(nls_fit)) * se
+pi <- data.frame(algal, ll, ul)
+
+p + stat_function(fun = nlmodel, args = list(coef(nls_fit))) +
+  geom_smooth(aes(ymin = ll, ymax = ul), data = ci, stat="identity") + 
+  geom_smooth(aes(ymin = ll, ymax = ul), data = pi, stat="identity")
+```
+
+
+
