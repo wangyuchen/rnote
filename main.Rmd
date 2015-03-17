@@ -1,10 +1,13 @@
 ---
 title: "Numerical Examples Using R"
-author: "Yuchen Wang"
 output:
+  pdf_document:
+    latex_engine: xelatex
+    toc: yes
   html_document:
+    css: custom_toc.css
     number_sections: yes
-    theme: journal
+    theme: cosmo
     toc: yes
 ---
 
@@ -14,8 +17,8 @@ opts_knit$set(child.path = "src/")
 opts_chunk$set(fig.align = "center", fig.path = "src/figs/")
 ```
 
-
+---
 `r knit_child("chap4-1.Rmd")`
 
+---
 `r knit_child("chap4-2.Rmd")`
-
