@@ -111,7 +111,7 @@ qplot(x, rstudent, data = enzyme, geom = "point", xlab = "Concentration")
 ```
 
 
-#### Confidence intervals
+#### Confidence intervals for $Y$
 The confidence interval is computed by
 \[\hat{Y}_0 \pm t_{(n-p, 1-\alpha/2)} s [f_0'(F'F)^{-1}f_0]^{1/2} .\]
 Note that if we want confidence interval at original $x$ values $x_i$, the definition for $f_0$ here is just the transpose of $F(\theta, x_i)$.
