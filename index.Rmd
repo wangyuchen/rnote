@@ -2,9 +2,8 @@
 title: "Numerical Examples Using R"
 output:
   html_document:
-    css: custom_toc.css
     number_sections: yes
-    theme: cosmo
+    theme: spacelab
     toc: yes
   pdf_document:
     latex_engine: xelatex
@@ -14,7 +13,7 @@ output:
 ```{r, echo=FALSE}
 library(knitr)
 opts_knit$set(child.path = "src/")
-opts_chunk$set(fig.align = "center", fig.path = "src/figs/")
+opts_chunk$set(fig.align = "center", fig.path = "src/figs/", cache = T)
 ```
 
 ---
