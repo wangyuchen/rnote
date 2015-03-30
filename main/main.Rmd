@@ -13,7 +13,7 @@ output:
 ```{r, echo=FALSE}
 library(knitr)
 opts_knit$set(child.path = "../")
-opts_chunk$set(fig.align = "center", fig.path = "../figs/", cache = T)
+opts_chunk$set(fig.align = "center", fig.path = "../main/figs/", cache = T)
 ```
 
 # Nonlinear Regression
