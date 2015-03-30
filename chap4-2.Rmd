@@ -1,6 +1,5 @@
 ---
 title: Nonlinear Regression (Grid-Search)
-output: html_document
 ---
 
 ```{r, echo=FALSE}
