@@ -2,7 +2,13 @@
 title: "Numerical Examples Using R"
 output:
   html_document:
+    css: ~/Documents/wangyuchen.github.io/css/blog.css
+    includes:
+      before_body: _includes/navbar.html
+      after_body: _includes/footer.html
+      in_header: _includes/head.html
     number_sections: yes
+    self_contained: no
     theme: spacelab
     toc: yes
   pdf_document:
