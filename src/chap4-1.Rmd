@@ -1,5 +1,8 @@
 ---
-output: html_document
+title: Nonlinear Regression (Starting Values Available)
+output:
+  html_document:
+    toc: yes
 ---
 
 ```{r, echo=FALSE}
@@ -7,7 +10,6 @@ library(knitr)
 library(ggplot2)
 ```
 
-# Nonlinear Regression
 ## Nonlinear Regression (Starting Values Available)
 
 The velocity of a chemical reaction ($y$) is modeled as a function of the concentration of the chemical

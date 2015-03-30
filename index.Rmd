@@ -2,9 +2,9 @@
 title: "Numerical Examples Using R"
 output:
   html_document:
-    number_sections: yes
     theme: spacelab
     toc: yes
+    toc_depth: 2
   pdf_document:
     latex_engine: xelatex
     toc: yes
@@ -16,8 +16,8 @@ opts_knit$set(child.path = "src/")
 opts_chunk$set(fig.align = "center", fig.path = "src/figs/", cache = T)
 ```
 
----
+# Nonlinear Regression
+
 `r knit_child("chap4-1.Rmd")`
 
----
 `r knit_child("chap4-2.Rmd")`

@@ -1,4 +1,5 @@
 ---
+title: Nonlinear Regression (Grid-Search)
 output: html_document
 ---
 
@@ -8,7 +9,6 @@ library(ggplot2)
 ```
 
 ## Nonlinear Regression (Grid-Search)
-
 We will model the time evolution of an algal sample taken in the Adriatic Sea (Cavallini, 1993). Time ($x$) is expressed in days and biomass ($y$), which is a measure of growth, is measured in mm2 (what is actually measured is the surface covered by biomass in a microscopic sample). The data seem to follow a logistic curve:
 \[y_i = \frac{\theta_0}{1 + \exp (-\theta_1(x_i - \theta_2))}\]
 
