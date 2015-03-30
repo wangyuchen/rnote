@@ -1,4 +1,5 @@
 html_document:
   toc: yes
-  self_contained: false
+  theme: spacelab
+  self_contained: no
   lib_dir: libs
