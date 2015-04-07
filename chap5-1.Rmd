@@ -1,0 +1,109 @@
+---
+title: "Logistic Regression (Single-Trial Data)"
+---
+
+```{r, echo=FALSE}
+library(knitr)
+library(ggplot2)
+```
+
+The relationship between countries’ credit ratings and the volatility of the countries’ stock markets was examined in the _Journal of Portfolio Management_ (Spring 1996). Our interest lies in whether volatility (standard deviation of stock returns) and credit rating (in percent) can be used to classify a country into one of the two market types (developed or emerging).
+
+## Descriptive analysis
+
+```{r}
+volatile <- read.table("datasets/volatile.dat")
+names(volatile) <- c('country/region', 'volatile', 'credit', 'market')
+# transform the variable into factor class instead of numeric 0/1
+volatile$market <- as.factor(volatile$market)
+levels(volatile$market)  # develop is treated as 1
+kable(volatile)
+```
+
+
+## Logistic regression
+```{r}
+fit <- glm(market ~ volatile + credit, family = "binomial", data = volatile)
+fit
+```
+
+### Model fit results
+```{r}
+# response profile
+summary(volatile$market)
+```
+
+In order to compute the model fit statistics for an intercept only model, we can just fit the model explicitely and use the generic functions.
+
+```{r}
+fit2 <- glm(market ~ 1, family = "binomial", data = volatile)
+AIC(fit2, fit)
+BIC(fit2, fit)
+-2 * logLik(fit2)
+-2 * logLik(fit)
+```
+
+We know the likelihood ratio test is just the $-2log\Lambda$, we can use the information above to calculate it.
+
+```{r}
+-2 * as.numeric(logLik(fit2) - logLik(fit))
+1 - pchisq(-2 * as.numeric(logLik(fit2) - logLik(fit)), df = 2)  # p-value
+```
+
+For Wald test $H_0: L\theta = 0$, we need to specify L to compute the test statistic. For example if we want to test $H_0: \beta_1 = \beta_2 = 0$, we can set L in the following way:
+
+```{r}
+L <- rbind(c(0, 1, 0), c(0, 0, 1))
+L
+```
+
+There is a function `wald.test` from the _aod_ package. Note that for a Wald test, we need the variance of the parameter estimates, which is $a(\phi)(\hat{F}\hat{V}\hat{F})^{-1}$. This matrix can be calculated using the `vcov()` function. It's calculated by QR decomposition, so the result is slightly different than those from SAS.
+
+```{r}
+library(aod)
+wald.test(vcov(fit), b = coef(fit), L = L)
+```
+
+In SAS, the analysis of maximum likelihood estimates is done by Wald test and a Chi-square distribution with degree of freedom 1. This is the same as the a Z-test with a standard normal distribution. The Z statistic is the square root of the Wald Chi-square statistic and the p-values are the same.
+
+```{r}
+summary(fit)$coefficients
+```
+
+The estimates of odds ratio is obtained by applying the exponential function to the parameter estimates and confidence intervals.
+
+```{r}
+exp(coef(fit)[-1])
+exp(confint.default(fit)[-1, ])
+```
+
+The concordant and discordant percent all requires the fitted value to be calculated. Note that when we are modeling the probability for `develop` because it is the second level in the variable `market`.
+```{r}
+i <- volatile$market == 'develop'
+j <- volatile$market == 'emerge'
+pairs <- sum(i) * sum(j)
+
+# expand pairs into grid
+grid <- with(volatile, 
+             cbind(expand.grid(yi = market[i], yj = market[j]),
+                   expand.grid(pi = fitted(fit)[i], pj = fitted(fit)[j])))
+
+# Percent Concordant
+sum(grid$pi > grid$pj) / pairs
+
+# Percent Discordant
+sum(grid$pi < grid$pj) / pairs
+
+# Somers' D
+nc <- sum(grid$pi > grid$pj)
+(nc - (pairs - nc)) / pairs
+
+# Tau-a 
+2 * (nc - (pairs - nc)) / (nobs(fit) * (nobs(fit) - 1))
+```
+
+
+
+
+
+
