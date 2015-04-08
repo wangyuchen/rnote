@@ -1,0 +1,8 @@
+# Site settings
+title: Numeric Examples Using R
+email: ycwang0712@gmail.com
+description: R version of STAT 8320's SAS note.
+baseurl: "/rnote" # the subpath of your site, e.g. /blog/
+url: "http://wangyuchen.github.io" # the base hostname & protocol for your site
+# twitter_username: jekyllrb
+github_username:  wangyuchen
