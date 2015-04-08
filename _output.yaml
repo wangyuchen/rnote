@@ -3,5 +3,3 @@ html_document:
   theme: spacelab
   self_contained: no
   lib_dir: libs
-  includes:
-    before_body: include/navbar.html
