@@ -7,7 +7,6 @@ library(knitr)
 library(ggplot2)
 ```
 
-## Nonlinear Regression (Starting Values Available)
 
 The velocity of a chemical reaction ($y$) is modeled as a function of the concentration of the chemical
 ($x$). There are a total of 18 observations. The desired model is
@@ -21,7 +20,7 @@ To find reasonable starting values for $\theta_0$ and $\theta_1$, we take the in
 \[ \frac{1}{y_i} = \frac{\theta_1 + x_i}{\theta_0 x_i} = \frac{1}{\theta_o} + 
 \frac{\theta_1}{\theta_0} (\frac{1}{x_i}).\]
 
-### Descriptive analysis
+## Descriptive analysis
 ```{r}
 enzyme <- read.table("datasets/enzyme.dat")
 names(enzyme) <- c('y', 'x')
@@ -40,7 +39,7 @@ p <- ggplot(data = enzyme, aes(x, y)) + geom_point() +
 p
 ```
 
-### Perform an OLS regression to find starting values
+## Perform an OLS regression to find starting values
 ```{r}
 ols_fit <- lsfit(1/enzyme$x, 1/enzyme$y)
 ols_fit$coefficients
@@ -50,9 +49,9 @@ So the starting values for $\theta_0$ and $\theta_1$ are given by:
 \[\theta_0^{(0)} = 1 / \beta_0 = \frac{1}{0.03375868} = 29.62 \]
 \[\theta_1^{(0)} = \beta_1 / \beta_0 = \frac{0.45401397}{0.03375868} = 13.45 \]
 
-### Perform a non-linear regression with Gauss-Newton method
+## Perform a non-linear regression with Gauss-Newton method
 
-#### Fit the model
+### Fit the model
 The `nls()` function in _stats_ package performs nonlinear (weighted) least-square estimates of the parameter of a nonlinear model. It can use a `formula` object to specify a model and any user-specified function can be used in the model. Because nonlinear models are sometimes complicated, here we showed how to use a customized `nlmodel()` function to specify the model.
 
 To match the SAS output, `trace = T` is set to print out iteration history. Note that the first column corresponding to the objective function and the other columns corresponding to the parameter estimates for each iteration.
@@ -64,7 +63,7 @@ nls_fit <- nls(y ~ nlmodel(x, theta0, theta1), data = enzyme,
 nls_fit
 ```
 
-#### Parameter estimates
+### Parameter estimates
 Parameter estimates and other model summaries can be obtained using the `summary()` function.
 ```{r}
 sm <- summary(nls_fit, correlation = T)
@@ -82,8 +81,10 @@ sm$coefficients[1, 1] + qt(c(.025, .975), rdf) * sm$coefficients[1, 2]
 sm$coefficients[2, 1] + qt(c(.025, .975), rdf) * sm$coefficients[2, 2]
 ```
 
-#### Other Diagnostics
+### Leverage Values
 To compute the leverage, we need $F$ and $(F'F)^{-1}$. The tangent plane hat matrix is $H = F(F'F)^{-1}F'$. The leverage values are the diagonal elements of the hat matrix.
+
+
 
 ```{r}
 cf <- nls_fit$m$gradient()  # cf: capital f matrix
@@ -94,7 +95,7 @@ ch <- cf %*% sm$cov.unscaled %*% t(cf)
 kable(diag(ch), row.names = T, col.names = c("LEV"))
 ```
 
-#### Studentized residual plots
+### Studentized residual plots
 The studentized residual is computed as 
 
 \[r_i = \frac{e_i}{s \sqrt{1 - \hat{H}_{ii}} } \]
@@ -108,7 +109,7 @@ qplot(x, rstudent, data = enzyme, geom = "point", xlab = "Concentration")
 ```
 
 
-#### Confidence intervals for $Y$
+### Confidence intervals for $Y$
 The confidence interval is computed by
 \[\hat{Y}_0 \pm t_{(n-p, 1-\alpha/2)} s [f_0'(F'F)^{-1}f_0]^{1/2} .\]
 Note that if we want confidence interval at original $x$ values $x_i$, the definition for $f_0$ here is just the transpose of $F(\theta, x_i)$.

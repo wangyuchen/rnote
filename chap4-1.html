@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+<meta charset="utf-8">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="pandoc" />
+
+
+
+<title>Nonlinear Regression (Starting Values Available)</title>
+
+<script src="libs/jquery-1.11.0/jquery.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="libs/bootstrap-3.3.1/css/spacelab.min.css" rel="stylesheet" />
+<script src="libs/bootstrap-3.3.1/js/bootstrap.min.js"></script>
+<script src="libs/bootstrap-3.3.1/shim/html5shiv.min.js"></script>
+<script src="libs/bootstrap-3.3.1/shim/respond.min.js"></script>
+
+<style type="text/css">code{white-space: pre;}</style>
+<link rel="stylesheet"
+      href="libs/highlight/default.css"
+      type="text/css" />
+<script src="libs/highlight/highlight.js"></script>
+<style type="text/css">
+  pre:not([class]) {
+    background-color: white;
+  }
+</style>
+<script type="text/javascript">
+if (window.hljs && document.readyState && document.readyState === "complete") {
+   window.setTimeout(function() {
+      hljs.initHighlighting();
+   }, 0);
+}
+</script>
+
+
+
+</head>
+
+<body>
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+code {
+  color: inherit;
+  background-color: rgba(0, 0, 0, 0.04);
+}
+img {
+  max-width:100%;
+  height: auto;
+}
+</style>
+<div class="container-fluid main-container">
+
+
+<div id="header">
+<h1 class="title">Nonlinear Regression (Starting Values Available)</h1>
+</div>
+
+<div id="TOC">
+<ul>
+<li><a href="#descriptive-analysis">Descriptive analysis</a></li>
+<li><a href="#perform-an-ols-regression-to-find-starting-values">Perform an OLS regression to find starting values</a></li>
+<li><a href="#perform-a-non-linear-regression-with-gauss-newton-method">Perform a non-linear regression with Gauss-Newton method</a><ul>
+<li><a href="#fit-the-model">Fit the model</a></li>
+<li><a href="#parameter-estimates">Parameter estimates</a></li>
+<li><a href="#leverage-values">Leverage Values</a></li>
+<li><a href="#studentized-residual-plots">Studentized residual plots</a></li>
+<li><a href="#confidence-intervals-for-y">Confidence intervals for <span class="math">\(Y\)</span></a></li>
+</ul></li>
+</ul>
+</div>
+
+<p>The velocity of a chemical reaction (<span class="math">\(y\)</span>) is modeled as a function of the concentration of the chemical (<span class="math">\(x\)</span>). There are a total of 18 observations. The desired model is</p>
+<p><span class="math">\[ y_i = \frac{\theta_0 x_i}{\theta_1 + x_i} + \epsilon_i. \]</span></p>
+<p>To find reasonable starting values for <span class="math">\(\theta_0\)</span> and <span class="math">\(\theta_1\)</span>, we take the inverse of the model expression (ignoring the error term) and fit the ordinary least-squares regression:</p>
+<p><span class="math">\[ \frac{1}{y_i} = \frac{\theta_1 + x_i}{\theta_0 x_i} = \frac{1}{\theta_o} + 
+\frac{\theta_1}{\theta_0} (\frac{1}{x_i}).\]</span></p>
+<div id="descriptive-analysis" class="section level2">
+<h2>Descriptive analysis</h2>
+<pre class="r"><code>enzyme &lt;- read.table(&quot;datasets/enzyme.dat&quot;)
+names(enzyme) &lt;- c(&#39;y&#39;, &#39;x&#39;)</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="left"></th>
+<th align="right">y</th>
+<th align="right">x</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">1</td>
+<td align="right">2.1</td>
+<td align="right">1.0</td>
+</tr>
+<tr class="even">
+<td align="left">2</td>
+<td align="right">2.5</td>
+<td align="right">1.5</td>
+</tr>
+<tr class="odd">
+<td align="left">3</td>
+<td align="right">4.9</td>
+<td align="right">2.0</td>
+</tr>
+<tr class="even">
+<td align="left">4</td>
+<td align="right">5.5</td>
+<td align="right">3.0</td>
+</tr>
+<tr class="odd">
+<td align="left">5</td>
+<td align="right">7.0</td>
+<td align="right">4.0</td>
+</tr>
+<tr class="even">
+<td align="left">6</td>
+<td align="right">8.4</td>
+<td align="right">5.0</td>
+</tr>
+<tr class="odd">
+<td align="left">7</td>
+<td align="right">9.6</td>
+<td align="right">6.0</td>
+</tr>
+<tr class="even">
+<td align="left">8</td>
+<td align="right">10.2</td>
+<td align="right">7.5</td>
+</tr>
+<tr class="odd">
+<td align="left">9</td>
+<td align="right">11.4</td>
+<td align="right">8.5</td>
+</tr>
+<tr class="even">
+<td align="left">10</td>
+<td align="right">12.5</td>
+<td align="right">10.0</td>
+</tr>
+<tr class="odd">
+<td align="left">11</td>
+<td align="right">13.1</td>
+<td align="right">12.5</td>
+</tr>
+<tr class="even">
+<td align="left">12</td>
+<td align="right">14.6</td>
+<td align="right">15.0</td>
+</tr>
+<tr class="odd">
+<td align="left">13</td>
+<td align="right">17.0</td>
+<td align="right">17.5</td>
+</tr>
+<tr class="even">
+<td align="left">14</td>
+<td align="right">16.8</td>
+<td align="right">20.0</td>
+</tr>
+<tr class="odd">
+<td align="left">15</td>
+<td align="right">18.6</td>
+<td align="right">25.0</td>
+</tr>
+<tr class="even">
+<td align="left">16</td>
+<td align="right">19.7</td>
+<td align="right">30.0</td>
+</tr>
+<tr class="odd">
+<td align="left">17</td>
+<td align="right">21.3</td>
+<td align="right">35.0</td>
+</tr>
+<tr class="even">
+<td align="left">18</td>
+<td align="right">21.6</td>
+<td align="right">40.0</td>
+</tr>
+</tbody>
+</table>
+<pre class="r"><code># plot the data
+require(ggplot2)
+p &lt;- ggplot(data = enzyme, aes(x, y)) + geom_point() + 
+  labs(y = &quot;Reaction Velocity&quot;, x = &quot;Concentration&quot;)
+p</code></pre>
+<p><img src="chap4-1_files/figure-html/unnamed-chunk-4-1.png" title="" alt="" width="672" /></p>
+</div>
+<div id="perform-an-ols-regression-to-find-starting-values" class="section level2">
+<h2>Perform an OLS regression to find starting values</h2>
+<pre class="r"><code>ols_fit &lt;- lsfit(1/enzyme$x, 1/enzyme$y)
+ols_fit$coefficients</code></pre>
+<pre><code>##  Intercept          X 
+## 0.03375868 0.45401397</code></pre>
+<p>So the starting values for <span class="math">\(\theta_0\)</span> and <span class="math">\(\theta_1\)</span> are given by: <span class="math">\[\theta_0^{(0)} = 1 / \beta_0 = \frac{1}{0.03375868} = 29.62 \]</span> <span class="math">\[\theta_1^{(0)} = \beta_1 / \beta_0 = \frac{0.45401397}{0.03375868} = 13.45 \]</span></p>
+</div>
+<div id="perform-a-non-linear-regression-with-gauss-newton-method" class="section level2">
+<h2>Perform a non-linear regression with Gauss-Newton method</h2>
+<div id="fit-the-model" class="section level3">
+<h3>Fit the model</h3>
+<p>The <code>nls()</code> function in <em>stats</em> package performs nonlinear (weighted) least-square estimates of the parameter of a nonlinear model. It can use a <code>formula</code> object to specify a model and any user-specified function can be used in the model. Because nonlinear models are sometimes complicated, here we showed how to use a customized <code>nlmodel()</code> function to specify the model.</p>
+<p>To match the SAS output, <code>trace = T</code> is set to print out iteration history. Note that the first column corresponding to the objective function and the other columns corresponding to the parameter estimates for each iteration.</p>
+<pre class="r"><code>nlmodel &lt;- function(x, theta0, theta1) theta0 * x / (theta1 + x)
+nls_fit &lt;- nls(y ~ nlmodel(x, theta0, theta1), data = enzyme, 
+               start = list(theta0 = 29.62, theta1 = 13.45), trace = T)</code></pre>
+<pre><code>## 6.57116 :  29.62 13.45
+## 4.303542 :  28.14228 12.59796
+## 4.302271 :  28.13785 12.57534
+## 4.302271 :  28.13708 12.57449
+## 4.302271 :  28.13705 12.57445</code></pre>
+<pre class="r"><code>nls_fit</code></pre>
+<pre><code>## Nonlinear regression model
+##   model: y ~ nlmodel(x, theta0, theta1)
+##    data: enzyme
+## theta0 theta1 
+##  28.14  12.57 
+##  residual sum-of-squares: 4.302
+## 
+## Number of iterations to convergence: 4 
+## Achieved convergence tolerance: 4.304e-07</code></pre>
+</div>
+<div id="parameter-estimates" class="section level3">
+<h3>Parameter estimates</h3>
+<p>Parameter estimates and other model summaries can be obtained using the <code>summary()</code> function.</p>
+<pre class="r"><code>sm &lt;- summary(nls_fit, correlation = T)
+sm$coefficients  # coefficients and their significance</code></pre>
+<pre><code>##        Estimate Std. Error  t value     Pr(&gt;|t|)
+## theta0 28.13705  0.7279790 38.65091 3.137221e-17
+## theta1 12.57445  0.7630534 16.47913 1.850253e-11</code></pre>
+<pre class="r"><code>sm$correlation  # correlation matrix of parameters</code></pre>
+<pre><code>##           theta0    theta1
+## theta0 1.0000000 0.9366248
+## theta1 0.9366248 1.0000000</code></pre>
+<p>To get individual confidence intervals on paramter estimates, we need to know the standard error of the estiamtes as well as the degree of freedom of the estimates of <span class="math">\(\sigma^2\)</span>. That can be obtained from <code>df.residual()</code>.</p>
+<pre class="r"><code>rdf &lt;- df.residual(nls_fit)
+# C.I. for theta0
+sm$coefficients[1, 1] + qt(c(.025, .975), rdf) * sm$coefficients[1, 2]</code></pre>
+<pre><code>## [1] 26.5938 29.6803</code></pre>
+<pre class="r"><code># C.I. for theta1
+sm$coefficients[2, 1] + qt(c(.025, .975), rdf) * sm$coefficients[2, 2]</code></pre>
+<pre><code>## [1] 10.95685 14.19205</code></pre>
+</div>
+<div id="leverage-values" class="section level3">
+<h3>Leverage Values</h3>
+<p>To compute the leverage, we need <span class="math">\(F\)</span> and <span class="math">\((F&#39;F)^{-1}\)</span>. The tangent plane hat matrix is <span class="math">\(H = F(F&#39;F)^{-1}F&#39;\)</span>. The leverage values are the diagonal elements of the hat matrix.</p>
+<pre class="r"><code>cf &lt;- nls_fit$m$gradient()  # cf: capital f matrix
+sm$cov.unscaled  # (F&#39;F)^(-1)</code></pre>
+<pre><code>##          theta0   theta1
+## theta0 1.970879 1.934914
+## theta1 1.934914 2.165370</code></pre>
+<pre class="r"><code>ch &lt;- cf %*% sm$cov.unscaled %*% t(cf)
+
+# diagonal of hat matrix
+kable(diag(ch), row.names = T, col.names = c(&quot;LEV&quot;))</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="left"></th>
+<th align="right">LEV</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">1</td>
+<td align="right">0.0176537</td>
+</tr>
+<tr class="even">
+<td align="left">2</td>
+<td align="right">0.0328108</td>
+</tr>
+<tr class="odd">
+<td align="left">3</td>
+<td align="right">0.0484048</td>
+</tr>
+<tr class="even">
+<td align="left">4</td>
+<td align="right">0.0759531</td>
+</tr>
+<tr class="odd">
+<td align="left">5</td>
+<td align="right">0.0956214</td>
+</tr>
+<tr class="even">
+<td align="left">6</td>
+<td align="right">0.1072992</td>
+</tr>
+<tr class="odd">
+<td align="left">7</td>
+<td align="right">0.1124450</td>
+</tr>
+<tr class="even">
+<td align="left">8</td>
+<td align="right">0.1117837</td>
+</tr>
+<tr class="odd">
+<td align="left">9</td>
+<td align="right">0.1080296</td>
+</tr>
+<tr class="even">
+<td align="left">10</td>
+<td align="right">0.1003662</td>
+</tr>
+<tr class="odd">
+<td align="left">11</td>
+<td align="right">0.0882287</td>
+</tr>
+<tr class="even">
+<td align="left">12</td>
+<td align="right">0.0818877</td>
+</tr>
+<tr class="odd">
+<td align="left">13</td>
+<td align="right">0.0831978</td>
+</tr>
+<tr class="even">
+<td align="left">14</td>
+<td align="right">0.0919111</td>
+</tr>
+<tr class="odd">
+<td align="left">15</td>
+<td align="right">0.1271639</td>
+</tr>
+<tr class="even">
+<td align="left">16</td>
+<td align="right">0.1783176</td>
+</tr>
+<tr class="odd">
+<td align="left">17</td>
+<td align="right">0.2379108</td>
+</tr>
+<tr class="even">
+<td align="left">18</td>
+<td align="right">0.3010149</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="studentized-residual-plots" class="section level3">
+<h3>Studentized residual plots</h3>
+<p>The studentized residual is computed as</p>
+<p><span class="math">\[r_i = \frac{e_i}{s \sqrt{1 - \hat{H}_{ii}} } \]</span></p>
+<pre class="r"><code>rstudent &lt;- residuals(nls_fit) / (sm$sigma * sqrt(1 - diag(ch)))
+enzyme &lt;- data.frame(enzyme, rstudent)
+qplot(y, rstudent, data = enzyme, geom = &quot;point&quot;, xlab = &quot;Reaction Velocity&quot;)</code></pre>
+<p><img src="chap4-1_files/figure-html/unnamed-chunk-10-1.png" title="" alt="" width="672" /></p>
+<pre class="r"><code>qplot(x, rstudent, data = enzyme, geom = &quot;point&quot;, xlab = &quot;Concentration&quot;)</code></pre>
+<p><img src="chap4-1_files/figure-html/unnamed-chunk-10-2.png" title="" alt="" width="672" /></p>
+</div>
+<div id="confidence-intervals-for-y" class="section level3">
+<h3>Confidence intervals for <span class="math">\(Y\)</span></h3>
+<p>The confidence interval is computed by <span class="math">\[\hat{Y}_0 \pm t_{(n-p, 1-\alpha/2)} s [f_0&#39;(F&#39;F)^{-1}f_0]^{1/2} .\]</span> Note that if we want confidence interval at original <span class="math">\(x\)</span> values <span class="math">\(x_i\)</span>, the definition for <span class="math">\(f_0\)</span> here is just the transpose of <span class="math">\(F(\theta, x_i)\)</span>.</p>
+<pre class="r"><code>y0 &lt;- fitted(nls_fit)
+se &lt;- apply(t(cf), 2, function(f0) {
+  sm$sigma * {t(f0) %*% sm$cov.unscaled %*% f0}^(.5)
+})
+
+ll &lt;- fitted(nls_fit) + qt(.025, df.residual(nls_fit)) * se
+ul &lt;- fitted(nls_fit) + qt(.975, df.residual(nls_fit)) * se
+ci &lt;- data.frame(enzyme, ll, ul)
+
+
+p + stat_function(fun = nlmodel, args = as.list(coef(nls_fit))) +
+  geom_smooth(aes(ymin = ll, ymax = ul), data = ci, stat=&quot;identity&quot;)</code></pre>
+<p><img src="chap4-1_files/figure-html/unnamed-chunk-11-1.png" title="" alt="" width="672" /></p>
+<pre class="r"><code># prediction intervals are similar
+se &lt;- apply(t(cf), 2, function(f0) {
+  sm$sigma * {1 + t(f0) %*% sm$cov.unscaled %*% f0}^(.5)
+})
+
+ll &lt;- fitted(nls_fit) + qt(.025, df.residual(nls_fit)) * se
+ul &lt;- fitted(nls_fit) + qt(.975, df.residual(nls_fit)) * se
+pi &lt;- data.frame(enzyme, ll, ul)
+
+p + stat_function(fun = nlmodel, args = as.list(coef(nls_fit))) +
+  geom_smooth(aes(ymin = ll, ymax = ul), data = ci, stat=&quot;identity&quot;) + 
+  geom_smooth(aes(ymin = ll, ymax = ul), data = pi, stat=&quot;identity&quot;)</code></pre>
+<p><img src="chap4-1_files/figure-html/unnamed-chunk-11-2.png" title="" alt="" width="672" /></p>
+</div>
+</div>
+
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+$(document).ready(function () {
+  $('tr.header').parent('thead').parent('table').addClass('table table-condensed');
+});
+
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+<meta charset="utf-8">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="pandoc" />
+
+
+
+<title>Nonlinear Regression (Grid-Search)</title>
+
+<script src="libs/jquery-1.11.0/jquery.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="libs/bootstrap-3.3.1/css/spacelab.min.css" rel="stylesheet" />
+<script src="libs/bootstrap-3.3.1/js/bootstrap.min.js"></script>
+<script src="libs/bootstrap-3.3.1/shim/html5shiv.min.js"></script>
+<script src="libs/bootstrap-3.3.1/shim/respond.min.js"></script>
+
+<style type="text/css">code{white-space: pre;}</style>
+<link rel="stylesheet"
+      href="libs/highlight/default.css"
+      type="text/css" />
+<script src="libs/highlight/highlight.js"></script>
+<style type="text/css">
+  pre:not([class]) {
+    background-color: white;
+  }
+</style>
+<script type="text/javascript">
+if (window.hljs && document.readyState && document.readyState === "complete") {
+   window.setTimeout(function() {
+      hljs.initHighlighting();
+   }, 0);
+}
+</script>
+
+
+
+</head>
+
+<body>
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+code {
+  color: inherit;
+  background-color: rgba(0, 0, 0, 0.04);
+}
+img {
+  max-width:100%;
+  height: auto;
+}
+</style>
+<div class="container-fluid main-container">
+
+
+<div id="header">
+<h1 class="title">Nonlinear Regression (Grid-Search)</h1>
+</div>
+
+<div id="TOC">
+<ul>
+<li><a href="#descriptive-analysis">Descriptive analysis</a></li>
+<li><a href="#perform-a-nonlinear-regression-with-the-grid-search-method">Perform a nonlinear regression with the grid-search method</a><ul>
+<li><a href="#fit-the-nonlinear-model">Fit the nonlinear model</a></li>
+<li><a href="#confidence-intervals-for-parameter-estimates">Confidence intervals for parameter estimates</a></li>
+<li><a href="#confidence-and-prediction-interval-for-y">Confidence and prediction interval for <span class="math">\(Y\)</span></a></li>
+</ul></li>
+</ul>
+</div>
+
+<p>We will model the time evolution of an algal sample taken in the Adriatic Sea (Cavallini, 1993). Time (<span class="math">\(x\)</span>) is expressed in days and biomass (<span class="math">\(y\)</span>), which is a measure of growth, is measured in mm2 (what is actually measured is the surface covered by biomass in a microscopic sample). The data seem to follow a logistic curve: <span class="math">\[y_i = \frac{\theta_0}{1 + \exp (-\theta_1(x_i - \theta_2))}\]</span></p>
+<div id="descriptive-analysis" class="section level2">
+<h2>Descriptive analysis</h2>
+<pre class="r"><code>algal &lt;- data.frame(x = c(11, 15, 18, 23, 26, 31, 39, 44, 54, 64, 74), 
+                    y = c(.0048, .0105, .0207, .0619, .3370, 
+                          .7400, 1.7, 2.45, 3.5, 4.5, 5.09))
+kable(algal, row.names = T)</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="left"></th>
+<th align="right">x</th>
+<th align="right">y</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">1</td>
+<td align="right">11</td>
+<td align="right">0.0048</td>
+</tr>
+<tr class="even">
+<td align="left">2</td>
+<td align="right">15</td>
+<td align="right">0.0105</td>
+</tr>
+<tr class="odd">
+<td align="left">3</td>
+<td align="right">18</td>
+<td align="right">0.0207</td>
+</tr>
+<tr class="even">
+<td align="left">4</td>
+<td align="right">23</td>
+<td align="right">0.0619</td>
+</tr>
+<tr class="odd">
+<td align="left">5</td>
+<td align="right">26</td>
+<td align="right">0.3370</td>
+</tr>
+<tr class="even">
+<td align="left">6</td>
+<td align="right">31</td>
+<td align="right">0.7400</td>
+</tr>
+<tr class="odd">
+<td align="left">7</td>
+<td align="right">39</td>
+<td align="right">1.7000</td>
+</tr>
+<tr class="even">
+<td align="left">8</td>
+<td align="right">44</td>
+<td align="right">2.4500</td>
+</tr>
+<tr class="odd">
+<td align="left">9</td>
+<td align="right">54</td>
+<td align="right">3.5000</td>
+</tr>
+<tr class="even">
+<td align="left">10</td>
+<td align="right">64</td>
+<td align="right">4.5000</td>
+</tr>
+<tr class="odd">
+<td align="left">11</td>
+<td align="right">74</td>
+<td align="right">5.0900</td>
+</tr>
+</tbody>
+</table>
+<pre class="r"><code>require(ggplot2)
+p &lt;- ggplot(data = algal, aes(x, y)) + geom_point()
+p</code></pre>
+<p><img src="chap4-2_files/figure-html/unnamed-chunk-3-1.png" title="" alt="" width="672" /></p>
+</div>
+<div id="perform-a-nonlinear-regression-with-the-grid-search-method" class="section level2">
+<h2>Perform a nonlinear regression with the grid-search method</h2>
+<p>In R, we can perform the grid search and find the starting value manually.</p>
+<pre class="r"><code># setup grid
+grid &lt;- expand.grid(theta0 = seq(0, 10, 2), 
+                    theta1 = seq(0, .5, .1), 
+                    theta2 = seq(40, 60, 5))
+kable(head(grid))</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="right">theta0</th>
+<th align="right">theta1</th>
+<th align="right">theta2</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">40</td>
+</tr>
+<tr class="even">
+<td align="right">2</td>
+<td align="right">0</td>
+<td align="right">40</td>
+</tr>
+<tr class="odd">
+<td align="right">4</td>
+<td align="right">0</td>
+<td align="right">40</td>
+</tr>
+<tr class="even">
+<td align="right">6</td>
+<td align="right">0</td>
+<td align="right">40</td>
+</tr>
+<tr class="odd">
+<td align="right">8</td>
+<td align="right">0</td>
+<td align="right">40</td>
+</tr>
+<tr class="even">
+<td align="right">10</td>
+<td align="right">0</td>
+<td align="right">40</td>
+</tr>
+</tbody>
+</table>
+<p>We specify the nonlinear model and compute the sum of squares of error manually.</p>
+<pre class="r"><code>nlmodel &lt;- function(x, theta) {
+  theta[1] / (1 + exp(-theta[2] * (x - theta[3])))
+}
+
+sse &lt;- apply(grid, 1, function(theta) {
+  sum((algal$y - nlmodel(algal$x, theta))^2)
+})
+kable(head(data.frame(grid, sse)))  # only the head of the table is shown</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="right">theta0</th>
+<th align="right">theta1</th>
+<th align="right">theta2</th>
+<th align="right">sse</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">40</td>
+<td align="right">67.96616</td>
+</tr>
+<tr class="even">
+<td align="right">2</td>
+<td align="right">0</td>
+<td align="right">40</td>
+<td align="right">42.13636</td>
+</tr>
+<tr class="odd">
+<td align="right">4</td>
+<td align="right">0</td>
+<td align="right">40</td>
+<td align="right">38.30656</td>
+</tr>
+<tr class="even">
+<td align="right">6</td>
+<td align="right">0</td>
+<td align="right">40</td>
+<td align="right">56.47676</td>
+</tr>
+<tr class="odd">
+<td align="right">8</td>
+<td align="right">0</td>
+<td align="right">40</td>
+<td align="right">96.64696</td>
+</tr>
+<tr class="even">
+<td align="right">10</td>
+<td align="right">0</td>
+<td align="right">40</td>
+<td align="right">158.81716</td>
+</tr>
+</tbody>
+</table>
+<p>Final starting values:</p>
+<pre class="r"><code>grid[which.min(sse), ]</code></pre>
+<pre><code>##    theta0 theta1 theta2
+## 82      6    0.1     50</code></pre>
+<div id="fit-the-nonlinear-model" class="section level3">
+<h3>Fit the nonlinear model</h3>
+<pre class="r"><code>nls_fit &lt;- nls(y ~ nlmodel(x, theta), data = algal, trace = T,
+               start = list(theta = c(6, .1, 50)))</code></pre>
+<pre><code>## 0.6350226 :   6.0  0.1 50.0
+## 0.2857354 :   5.0141669  0.1157241 45.8625826
+## 0.2384547 :   5.0887283  0.1221786 45.7619359
+## 0.2381781 :   5.0956237  0.1211468 45.7748836
+## 0.2381669 :   5.0947305  0.1213394 45.7743463
+## 0.2381665 :   5.0949589  0.1213007 45.7748138
+## 0.2381664 :   5.0949235  0.1213077 45.7747829
+## 0.2381664 :   5.0949315  0.1213063 45.7747980
+## 0.2381664 :   5.0949302  0.1213066 45.7747966</code></pre>
+<pre class="r"><code>nls_fit</code></pre>
+<pre><code>## Nonlinear regression model
+##   model: y ~ nlmodel(x, theta)
+##    data: algal
+##  theta1  theta2  theta3 
+##  5.0949  0.1213 45.7748 
+##  residual sum-of-squares: 0.2382
+## 
+## Number of iterations to convergence: 8 
+## Achieved convergence tolerance: 1.925e-06</code></pre>
+<pre class="r"><code>sm &lt;- summary(nls_fit, correlation = T)
+sm$coefficients</code></pre>
+<pre><code>##          Estimate Std. Error  t value     Pr(&gt;|t|)
+## theta1  5.0949302 0.19766239 25.77592 5.505407e-09
+## theta2  0.1213066 0.01159284 10.46393 6.044273e-06
+## theta3 45.7747966 1.17097569 39.09116 2.015699e-10</code></pre>
+<pre class="r"><code>sm$correlation</code></pre>
+<pre><code>##            theta1     theta2     theta3
+## theta1  1.0000000 -0.6865027  0.8166978
+## theta2 -0.6865027  1.0000000 -0.6528791
+## theta3  0.8166978 -0.6528791  1.0000000</code></pre>
+</div>
+<div id="confidence-intervals-for-parameter-estimates" class="section level3">
+<h3>Confidence intervals for parameter estimates</h3>
+<pre class="r"><code># the output shows theta 1-3, it&#39;s actually theta 0-2
+mapply(function(est, se) est + qt(c(.025, .975), df.residual(nls_fit)) * se,
+       sm$coefficients[, 1], sm$coefficients[, 2], SIMPLIFY = F)</code></pre>
+<pre><code>## $theta1
+## [1] 4.63912 5.55074
+## 
+## $theta2
+## [1] 0.09457346 0.14803972
+## 
+## $theta3
+## [1] 43.07452 48.47507</code></pre>
+</div>
+<div id="confidence-and-prediction-interval-for-y" class="section level3">
+<h3>Confidence and prediction interval for <span class="math">\(Y\)</span></h3>
+<pre class="r"><code>y0 &lt;- fitted(nls_fit)
+cf &lt;- cf &lt;- nls_fit$m$gradient() 
+se &lt;- apply(t(cf), 2, function(f0) {
+  sm$sigma * {t(f0) %*% sm$cov.unscaled %*% f0}^(.5)
+})
+
+ll &lt;- fitted(nls_fit) + qt(.025, df.residual(nls_fit)) * se
+ul &lt;- fitted(nls_fit) + qt(.975, df.residual(nls_fit)) * se
+ci &lt;- data.frame(algal, ll, ul)
+
+# prediction intervals are similar
+se &lt;- apply(t(cf), 2, function(f0) {
+  sm$sigma * {1 + t(f0) %*% sm$cov.unscaled %*% f0}^(.5)
+})
+
+ll &lt;- fitted(nls_fit) + qt(.025, df.residual(nls_fit)) * se
+ul &lt;- fitted(nls_fit) + qt(.975, df.residual(nls_fit)) * se
+pi &lt;- data.frame(algal, ll, ul)
+
+p + stat_function(fun = nlmodel, args = list(coef(nls_fit))) +
+  geom_smooth(aes(ymin = ll, ymax = ul), data = ci, stat=&quot;identity&quot;) + 
+  geom_smooth(aes(ymin = ll, ymax = ul), data = pi, stat=&quot;identity&quot;)</code></pre>
+<p><img src="chap4-2_files/figure-html/unnamed-chunk-9-1.png" title="" alt="" width="672" /></p>
+</div>
+</div>
+
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+$(document).ready(function () {
+  $('tr.header').parent('thead').parent('table').addClass('table table-condensed');
+});
+
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

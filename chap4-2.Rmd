@@ -7,11 +7,10 @@ library(knitr)
 library(ggplot2)
 ```
 
-## Nonlinear Regression (Grid-Search)
 We will model the time evolution of an algal sample taken in the Adriatic Sea (Cavallini, 1993). Time ($x$) is expressed in days and biomass ($y$), which is a measure of growth, is measured in mm2 (what is actually measured is the surface covered by biomass in a microscopic sample). The data seem to follow a logistic curve:
 \[y_i = \frac{\theta_0}{1 + \exp (-\theta_1(x_i - \theta_2))}\]
 
-### Descriptive analysis
+## Descriptive analysis
 ```{r}
 algal <- data.frame(x = c(11, 15, 18, 23, 26, 31, 39, 44, 54, 64, 74), 
                     y = c(.0048, .0105, .0207, .0619, .3370, 
@@ -26,7 +25,7 @@ p
 ```
 
 
-### Perform a nonlinear regression with the grid-search method
+## Perform a nonlinear regression with the grid-search method
 
 In R, we can perform the grid search and find the starting value manually.
 
@@ -55,7 +54,7 @@ Final starting values:
 grid[which.min(sse), ]
 ```
 
-#### Fit the nonlinear model
+### Fit the nonlinear model
 ```{r}
 nls_fit <- nls(y ~ nlmodel(x, theta), data = algal, trace = T,
                start = list(theta = c(6, .1, 50)))
@@ -65,15 +64,14 @@ sm$coefficients
 sm$correlation
 ```
 
-
-#### Confidence intervals for parameter estimates
+### Confidence intervals for parameter estimates
 ```{r}
 # the output shows theta 1-3, it's actually theta 0-2
 mapply(function(est, se) est + qt(c(.025, .975), df.residual(nls_fit)) * se,
        sm$coefficients[, 1], sm$coefficients[, 2], SIMPLIFY = F)
 ```
 
-#### Confidence and prediction interval for $Y$
+### Confidence and prediction interval for $Y$
 ```{r}
 y0 <- fitted(nls_fit)
 cf <- cf <- nls_fit$m$gradient() 
